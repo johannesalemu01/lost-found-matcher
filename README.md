@@ -61,6 +61,11 @@ Matching lost and found reports is not a search problem. Two strangers describe 
 
 ## How matching works
 
+![Matching workflow: report submitted, validated, saved, pre-filtered, checked against hard rules, scored, shown to the reporter, reviewed by staff, then returned or undone](docs/matching-flow.png)
+
+<details>
+<summary>Diagram source (Mermaid)</summary>
+
 ```mermaid
 flowchart TD
   submit[Student submits report to POST /api/reports] --> validate{Zod validation}
@@ -82,6 +87,8 @@ flowchart TD
   pending -->|owner passes verification| returned[Both reports RETURNED]
   pending -->|Undo| reopened[Both reports back to OPEN and matched again]
 ```
+
+</details>
 
 ### How it works
 
