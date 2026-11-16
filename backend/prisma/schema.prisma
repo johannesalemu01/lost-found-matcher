@@ -90,6 +90,8 @@ model Report {
   eventEnd            DateTime     @db.Timestamptz(3)
   /// Staff-only. Never returned by public endpoints.
   privateDetail       String?      @db.VarChar(300)
+  /// Staff-only photo (file name in UPLOAD_DIR). Used for verification, never for scoring.
+  photoFile           String?      @db.VarChar(100)
   contactName         String       @db.VarChar(80)
   contactEmailOrPhone String       @db.VarChar(120)
   status              ReportStatus @default(OPEN)

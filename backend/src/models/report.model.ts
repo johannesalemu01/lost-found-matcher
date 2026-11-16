@@ -13,8 +13,8 @@ export function activeWhere(now: Date): Prisma.ReportWhereInput {
   return { status: "OPEN", createdAt: { gte: new Date(now.getTime() - EXPIRY_DAYS * DAY) } };
 }
 
-export function createReport(input: CreateReportInput): Promise<ReportRow> {
-  return prisma.report.create({ data: { ...input, category: parentOf(input.subcategory) } });
+export function createReport(input: CreateReportInput, photoFile: string | null = null): Promise<ReportRow> {
+  return prisma.report.create({ data: { ...input, photoFile, category: parentOf(input.subcategory) } });
 }
 
 export function findReportById(id: string): Promise<ReportRow | null> {

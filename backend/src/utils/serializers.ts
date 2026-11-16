@@ -7,8 +7,11 @@ import type { ReportRow, StaffReport } from "../interfaces";
  */
 
 export function toReport(r: ReportRow): Report {
+  // The photo's file name never leaves the server; staff fetch it via /reports/:id/photo.
+  const { photoFile, ...rest } = r;
   return {
-    ...r,
+    ...rest,
+    hasPhoto: photoFile !== null,
     eventStart: r.eventStart.toISOString(),
     eventEnd: r.eventEnd.toISOString(),
     createdAt: r.createdAt.toISOString(),
@@ -17,7 +20,7 @@ export function toReport(r: ReportRow): Report {
 }
 
 export function toPublicReport(r: ReportRow, now = new Date()): PublicReport {
-  const { privateDetail: _p, contactName: _n, contactEmailOrPhone: _c, ...rest } = toReport(r);
+  const { privateDetail: _p, hasPhoto: _h, contactName: _n, contactEmailOrPhone: _c, ...rest } = toReport(r);
   return { ...rest, displayStatus: displayStatus(r, now) };
 }
 

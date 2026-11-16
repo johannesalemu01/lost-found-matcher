@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { z } from "zod";
 
 /**
@@ -22,6 +23,14 @@ export function loadServerEnv(): ServerEnv {
   }
   return { ...parsed.data, corsOrigins: parsed.data.CORS_ORIGIN.split(",").map((o) => o.trim()) };
 }
+
+/** Where staff-only photos are stored (outside the web root, gitignored). */
+export function uploadDir(): string {
+  return resolve(process.env.UPLOAD_DIR?.trim() || "uploads");
+}
+
+/** Photos are resized in the browser first; this is the hard server-side limit. */
+export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 export interface AiConfig {
   apiKey: string;

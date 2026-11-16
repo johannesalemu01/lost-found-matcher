@@ -28,6 +28,8 @@ export interface Report {
   eventStart: string;
   eventEnd: string;
   privateDetail: string | null;
+  /** Staff-only: whether a photo was attached (fetched separately with the staff role). */
+  hasPhoto: boolean;
   contactName: string;
   contactEmailOrPhone: string;
   status: ReportStatus;
@@ -36,7 +38,7 @@ export interface Report {
 }
 
 /** What public endpoints return: no private detail, no contact details. */
-export type PublicReport = Omit<Report, "privateDetail" | "contactName" | "contactEmailOrPhone"> & {
+export type PublicReport = Omit<Report, "privateDetail" | "hasPhoto" | "contactName" | "contactEmailOrPhone"> & {
   displayStatus: DisplayStatus;
 };
 

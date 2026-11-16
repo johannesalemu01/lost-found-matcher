@@ -3,15 +3,27 @@ import { conflict, notFound } from "../utils/errors";
 import { clarityCheck } from "./assist.service";
 import { matchesForReport } from "./matches.service";
 import * as ReportModel from "../models/report.model";
+import { assertImage, deletePhoto, readPhoto, savePhoto } from "./photo.service";
 import { statusMessage } from "../utils/status-messages";
 import type { CreatedReportResponse, CreateReportInput, ListReportsQuery, MyReportItem } from "../interfaces";
 import { toPublicReport, toReport, toStaffReport } from "../utils/serializers";
 
 const TOP_MATCHES_FOR_REPORTER = 5;
 
-/** Save a report, then immediately give the reporter their top matches and any clarity questions. */
-export async function createReport(input: CreateReportInput): Promise<CreatedReportResponse> {
-  const report = await ReportModel.createReport(input);
+/**
+ * Save a report (and its optional staff-only photo), then immediately give the reporter
+ * their top matches and any clarity questions. The photo is never used for scoring.
+ */
+export async function createReport(input: CreateReportInput, photo?: Buffer): Promise<CreatedReportResponse> {
+  if (photo) assertImage(photo); // reject a bad file before anything is saved
+  const photoFile = photo ? await savePhoto(photo) : null;
+  let report;
+  try {
+    report = await ReportModel.createReport(input, photoFile);
+  } catch (err) {
+    if (photoFile) await deletePhoto(photoFile);
+    throw err;
+  }
 
   const [matches, clarity] = await Promise.all([
     matchesForReport(report),
@@ -63,4 +75,11 @@ export async function closeReport(id: string) {
     throw conflict("This report has a confirmed match. Undo the match or mark it returned first.");
   }
   return toReport(await ReportModel.closeReport(id));
+}
+
+/** Staff only: the photo attached to a report. */
+export async function getReportPhoto(id: string) {
+  const report = await ReportModel.findReportById(id);
+  if (!report?.photoFile) throw notFound("This report has no photo.");
+  return readPhoto(report.photoFile);
 }
