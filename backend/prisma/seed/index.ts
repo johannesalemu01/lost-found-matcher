@@ -1,6 +1,7 @@
 /**
  * `npm run db:seed` – wipes the tables and loads the demo data from reports.data.ts.
  */
+import "../../src/config/load-env"; // must stay first
 import { readFile, readdir, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

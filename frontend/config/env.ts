@@ -1,2 +1,5 @@
-/** Where the Express API runs. Set in frontend/.env (see .env.example). */
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+/**
+ * The browser calls this site's own /api/* – Next forwards it to the Express API
+ * (see next.config.mjs, configured with API_URL in frontend/.env).
+ */
+export const API_BASE = "/api";

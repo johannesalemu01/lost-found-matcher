@@ -1,4 +1,4 @@
-import { API_URL } from "@/config/env";
+import { API_BASE } from "@/config/env";
 
 /** An API error with the server's per-field messages (from Zod) when there are any. */
 export class ApiError extends Error {
@@ -15,7 +15,7 @@ async function send(path: string, init: RequestInit = {}): Promise<Response> {
   // FormData sets its own multipart content type (with boundary); everything else is JSON.
   const isForm = init.body instanceof FormData;
   try {
-    return await fetch(`${API_URL}/api${path}`, {
+    return await fetch(`${API_BASE}${path}`, {
       ...init,
       headers: {
         ...(isForm ? {} : { "content-type": "application/json" }),
@@ -26,7 +26,7 @@ async function send(path: string, init: RequestInit = {}): Promise<Response> {
       cache: "no-store",
     });
   } catch {
-    throw new ApiError(`Can’t reach the server. Is the backend running on ${API_URL}?`, 0);
+    throw new ApiError("Can’t reach the server. Is the backend running?", 0);
   }
 }
 

@@ -1,3 +1,4 @@
+import "./config/load-env"; // must stay first
 import { createApp } from "./app";
 import { aiConfig, loadServerEnv } from "./config/env";
 
