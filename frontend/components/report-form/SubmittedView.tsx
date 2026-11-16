@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect } from "react";
 import type { ReportType } from "@lf/shared";
 import type { CreatedReportResponse } from "@/interfaces";
-import { BandBadge, Card, ReasonList, ScoreBar } from "@/components/ui";
+import { reportProgress } from "@/utils/report-progress";
+import { BandBadge, Card, ProgressTracker, ReasonList, ScoreBar } from "@/components/ui";
 import { ReportSummary } from "@/components/reports/ReportSummary";
 
 /** After submit: the matches we found and what happens next. No contact or private details are shown. */
@@ -12,6 +13,7 @@ export function SubmittedView({ type, result }: { type: ReportType; result: Crea
   const shown = result.matches.filter((m) => m.band !== "WEAK");
   const weak = result.matches.length - shown.length;
   const n = shown.length;
+  const progress = reportProgress(result.report, n);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -30,6 +32,11 @@ export function SubmittedView({ type, result }: { type: ReportType; result: Crea
             : "Staff will verify the owner and contact you if they need anything. Please bring the item to the Lost & Found office."}
         </p>
       </div>
+
+      <Card className="p-4 sm:p-5">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-stone-500">Where your report is now</p>
+        <ProgressTracker steps={progress.steps} current={progress.current} />
+      </Card>
 
       {result.clarity.questions.length > 0 && (
         <Card className="border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

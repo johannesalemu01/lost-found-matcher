@@ -2,8 +2,8 @@ import { CATEGORIES, CATEGORY_INFO, type Category, type ReportType } from "@lf/s
 import { cx } from "@/utils/cx";
 
 const STATUS_OPTIONS = [
-  { value: "", label: "Any status" },
   { value: "OPEN", label: "Open" },
+  { value: "", label: "Any status" },
   { value: "MATCH_PENDING", label: "Match pending" },
   { value: "RETURNED", label: "Returned" },
   { value: "CLOSED", label: "Closed" },
@@ -21,8 +21,8 @@ export interface ReportFilterState {
 export function ReportFilters({ value, onChange }: { value: ReportFilterState; onChange: (v: ReportFilterState) => void }) {
   const set = <K extends keyof ReportFilterState>(k: K, v: ReportFilterState[K]) => onChange({ ...value, [k]: v });
   return (
-    <div className="space-y-3">
-      <div className="inline-flex rounded-lg bg-stone-100 p-1" role="tablist">
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      <div className="inline-flex shrink-0 self-start rounded-lg bg-stone-100 p-1" role="tablist">
         {(["LOST", "FOUND"] as ReportType[]).map((t) => (
           <button
             key={t}
@@ -38,11 +38,11 @@ export function ReportFilters({ value, onChange }: { value: ReportFilterState; o
           </button>
         ))}
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-1 flex-col gap-2 sm:flex-row">
         <input
           type="search"
-          placeholder="Search title, description, brand…"
-          className="flex-1"
+          placeholder="Search: backpack, AirPods, keys…"
+          className="min-w-0 flex-1"
           value={value.q}
           onChange={(e) => set("q", e.target.value)}
           aria-label="Search"

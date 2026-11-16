@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRole } from "@/context/RoleContext";
 import { cx } from "@/utils/cx";
+import { ReportMenu } from "./ReportMenu";
 import { RoleToggle } from "./RoleToggle";
 
 const NAV = [
@@ -41,7 +42,10 @@ export function Header() {
             </Link>
           ))}
         </nav>
-        <RoleToggle />
+        <div className="ml-auto flex items-center gap-2">
+          <ReportMenu />
+          <RoleToggle />
+        </div>
       </div>
     </header>
   );

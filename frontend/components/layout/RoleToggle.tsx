@@ -26,10 +26,10 @@ export function RoleToggle() {
     };
   }, [open]);
 
-  if (!ready) return <div className="ml-auto h-8 w-32" />;
+  if (!ready) return <div className="h-8 w-24" />;
 
   return (
-    <div className="relative ml-auto flex items-center gap-2 text-xs" ref={panel}>
+    <div className="relative flex items-center gap-2 text-xs" ref={panel}>
       {role === "staff" ? (
         <>
           <span className="rounded-full bg-accent-50 px-2.5 py-1 font-medium text-accent-800 ring-1 ring-inset ring-accent-200">

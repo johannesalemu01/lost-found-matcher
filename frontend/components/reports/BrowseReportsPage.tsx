@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type { PublicReport } from "@lf/shared";
 import { useRole } from "@/context/RoleContext";
@@ -7,14 +8,14 @@ import { useToast } from "@/context/ToastContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { StaffReport } from "@/interfaces";
 import { reportsService } from "@/services";
-import { EmptyState, ErrorState, Spinner } from "@/components/ui";
+import { Card, EmptyState, ErrorState, PageHeader, Spinner } from "@/components/ui";
 import { ReportCard } from "./ReportCard";
 import { ReportFilters, type ReportFilterState } from "./ReportFilters";
 
 export function BrowseReportsPage() {
   const { role, ready } = useRole();
   const toast = useToast();
-  const [filters, setFilters] = useState<ReportFilterState>({ type: "LOST", q: "", category: "", status: "" });
+  const [filters, setFilters] = useState<ReportFilterState>({ type: "LOST", q: "", category: "", status: "OPEN" });
   const q = useDebouncedValue(filters.q.trim(), 300);
   const [reports, setReports] = useState<(PublicReport | StaffReport)[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,15 +45,24 @@ export function BrowseReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-stone-900">Browse reports</h1>
-        <p className="mt-1 text-sm text-stone-600">
-          Public listing – contact details and identifying details are never shown here.
-          {role === "staff" && " You are in staff mode, so you also see them."}
-        </p>
-      </div>
+      <PageHeader
+        title="Browse reports"
+        description={
+          role === "staff"
+            ? "Staff view – contact details, private details and photos are shown."
+            : "See what has been lost and found on campus. Contact and identifying details are never shown here."
+        }
+      />
 
-      <ReportFilters value={filters} onChange={setFilters} />
+      <Card className="p-4">
+        <ReportFilters value={filters} onChange={setFilters} />
+      </Card>
+
+      {reports && reports.length > 0 && (
+        <p className="text-sm text-stone-500" aria-live="polite">
+          {reports.length} {filters.type === "LOST" ? "lost" : "found"} report{reports.length === 1 ? "" : "s"}
+        </p>
+      )}
 
       {error ? (
         <ErrorState message={error} onRetry={load} />
@@ -60,13 +70,29 @@ export function BrowseReportsPage() {
         <Spinner />
       ) : reports.length === 0 ? (
         <EmptyState title="No reports match these filters" icon="🔎">
-          Try another search or category.
+          Try another search, category or status.
         </EmptyState>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
           {reports.map((r) => (
             <ReportCard key={r.id} report={r} onClose={close} />
           ))}
+        </div>
+      )}
+
+      {role !== "staff" && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-stone-300 px-5 py-4">
+          <p className="text-sm text-stone-600">
+            {filters.type === "LOST"
+              ? "Found one of these – or anything else? Report it and we’ll match it to its owner."
+              : "Don’t see what you lost? Report it – we’ll check every new found item against it."}
+          </p>
+          <Link
+            href={filters.type === "LOST" ? "/report/new?type=found" : "/report/new?type=lost"}
+            className="rounded-lg bg-accent-600 px-4 py-2 text-sm font-medium text-white hover:bg-accent-700"
+          >
+            {filters.type === "LOST" ? "I found something" : "I lost something"}
+          </Link>
         </div>
       )}
     </div>

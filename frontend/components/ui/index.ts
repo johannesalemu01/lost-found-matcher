@@ -6,3 +6,5 @@ export { Spinner, EmptyState, ErrorState } from "./States";
 export { Button } from "./Button";
 export { FieldError } from "./FieldError";
 export { Chip } from "./Chip";
+export { PageHeader } from "./PageHeader";
+export { ProgressTracker } from "./ProgressTracker";

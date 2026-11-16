@@ -6,7 +6,7 @@ import { useStaffMatches } from "@/hooks/useStaffMatches";
 import type { StaffMatch, StaffMatchGroup } from "@/interfaces";
 import { matchesService, reportsService } from "@/services";
 import { cx } from "@/utils/cx";
-import { EmptyState, ErrorState, Spinner } from "@/components/ui";
+import { EmptyState, ErrorState, PageHeader, Spinner } from "@/components/ui";
 import { StaffLoginForm } from "@/components/layout/StaffLoginForm";
 import { BandFilter, type BandFilterValue } from "./BandFilter";
 import { HandoverCard } from "./HandoverCard";
@@ -74,12 +74,10 @@ export function StaffReviewPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold text-stone-900">Match review</h1>
-        <p className="max-w-2xl text-sm text-stone-600">
-          Suggestions only – you decide. Compare the private details and photos, ask the verification question, then confirm.
-        </p>
-      </header>
+      <PageHeader
+        title="Match review"
+        description="Suggestions only – you decide. Compare the private details and photos, ask the verification question, then confirm."
+      />
 
       <div className="flex gap-1 border-b border-stone-200" role="tablist">
         {tabs.map((t) => (
