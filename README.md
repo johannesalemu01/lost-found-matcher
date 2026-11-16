@@ -205,26 +205,6 @@ The backend does not score every pair. For each report it first runs an indexed 
 | **Pure matching module** | `backend/src/matching` imports nothing from Express or Prisma. It is plain data in, plain data out, which makes it trivial to test and to explain. |
 | **Shared package** | Categories, campus layout, colour families and types live in `/shared` and are used by both the frontend and the backend, so the form chips and the engine can't drift apart. |
 
-## Intentionally not built
-
-- **Individual staff accounts / SSO.** One shared staff passcode protects all staff data; per-person accounts and an audit trail need the university's identity provider.
-- **Image similarity in the score.** Photos are for staff verification only (see *Photos verify, they don't score*).
-- **Cloud storage for photos.** Photos are stored on local disk (`backend/uploads/`, gitignored); a private bucket with signed URLs would replace this in production.
-- **Notifications (email/SMS).** Students check *My reports*, and staff contact people manually.
-- **Editing reports after submission.** Staff can close a report; the person can submit a new one.
-- **An admin UI for the campus map and dictionary.** These are config files.
-- **Multi-campus, i18n, analytics.**
-
-## Future improvements
-
-- **Semantic text matching with embeddings:** store `gemini-embedding-001` vectors in **pgvector** and add cosine similarity as an extra text signal. The rule-based concepts stay as an explainable floor.
-- **Photo similarity as a staff hint** (image embeddings), shown next to the photos but still kept out of the score.
-- **Notifications** when a strong match appears or a match is confirmed.
-- **Feedback loop to tune weights:** confirmed and rejected decisions are already stored. Use them to calibrate weights and band thresholds and to grow the concept dictionary.
-- **University SSO** for staff (per-person accounts, audit log of who confirmed what) and **verified student email** (magic link) so *My reports* can't be looked up by someone who only knows your address.
-- **Campus map** for picking locations, with distances instead of a neighbour list.
-- **Amharic support:** UI translation plus Amharic entries in the concept and colour dictionaries.
-
 ## AI usage
 
 TODO: written by me
