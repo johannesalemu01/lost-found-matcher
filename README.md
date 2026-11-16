@@ -61,125 +61,39 @@ Matching lost and found reports is not a search problem. Two strangers describe 
 
 ## How matching works
 
-The code is in [`backend/src/matching`](backend/src/matching), and all the numbers are in [`constants.ts`](backend/src/matching/constants.ts).
-
 ```mermaid
 flowchart TD
-  A["New lost or found report"] --> B{"Valid input?<br/>(Zod)"}
-  B -->|no| B1["400 with field errors<br/>person fixes and resubmits"]
-  B -->|yes| C["Save report<br/>+ clarity questions if vague"]
-  C --> D["SQL pre-filter candidates<br/>opposite type · open · not expired<br/>same parent category · date range"]
-  D --> E{"Hard rules<br/>for each pair"}
-  E -->|"phone vs earbuds · found before lost<br/>found 30+ days later · rejected before"| X["Excluded<br/>never shown"]
-  E -->|passes| F["Normalise text<br/>synonyms → concepts · colour words apart"]
-  F --> G["Score 5 signals → 0–100<br/>category 25 · text 30 · colour 15<br/>location 15 · time 15"]
-  G --> H{"Any red flag?"}
-  H -->|"colour or brand conflict<br/>or only 'Other' category"| H1["Cap at Possible ≤ 69"]
-  H -->|"found 7+ days later<br/>and not nearby"| H2["Cap at Weak ≤ 44"]
-  H -->|none| I{"Band"}
-  H1 --> I
-  H2 --> I
-  I -->|"≥ 70"| S["Strong"]
-  I -->|"45–69"| P["Possible"]
-  I -->|"30–44"| W["Weak (collapsed)"]
-  I -->|"&lt; 30"| N["Hidden"]
-  S --> R["Staff review<br/>reasons · private details · photos"]
-  P --> R
-  W --> R
-  R -->|Not a match| RJ["Rejected<br/>never suggested again"]
-  R -->|Confirm| CF["Both reports: match pending"]
-  CF --> V{"Owner answers the<br/>verification question?"}
-  V -->|yes, staff ticks the box| RT["Returned"]
-  V -->|no| U["Undo: both reports reopen"]
+  submit[Student submits report to POST /api/reports] --> validate{Zod validation}
+  validate -->|invalid or bad photo| fix[400 with field errors shown inline]
+  fix -->|edit and resubmit| submit
+  validate -->|ok| save[Save report as OPEN in PostgreSQL]
+  save --> prefilter[SQL prefilter: opposite type, OPEN, not expired, same category, date window]
+  prefilter --> hard{Hard rules for each pair}
+  hard -->|impossible or REJECTED before| drop[Excluded, never shown]
+  hard -->|passes| score[Score 0 to 100 from 5 signals, cap on red flags]
+  score -->|below 30| drop
+  score -->|STRONG, POSSIBLE or WEAK| respond[201 response with top matches and follow up questions]
+  save --> clarity{Gemini clarity check}
+  clarity -->|ok: AI reworded questions| respond
+  clarity -->|AI off, timeout or bad JSON: rule based questions| respond
+  respond --> review{Staff review at GET /api/matches}
+  review -->|Not a match| rejected[MatchDecision REJECTED, never suggested again]
+  review -->|Confirm| pending[Both reports MATCH_PENDING]
+  pending -->|owner passes verification| returned[Both reports RETURNED]
+  pending -->|Undo| reopened[Both reports back to OPEN and matched again]
 ```
 
-**In short**
+### How it works
 
-1. **Check and save.** The input is validated. Vague descriptions get follow-up questions, but they're still saved and still matched.
-2. **Find candidates cheaply.** One indexed SQL query keeps only reports that could possibly match.
-3. **Rule out the impossible.** Hard rules remove pairs that can't be the same item. They're never scored and never shown.
-4. **Score with explanations.** Five signals add up to 0–100, and each one produces a sentence staff can read ("Colour: black ≈ dark").
-5. **Cap on red flags.** A conflict can't hide behind a high total score, so it caps the band.
-6. **A human decides.** Staff compare private details and photos, then confirm or reject. The item is handed over only after the owner answers the verification question.
-
-The AI never appears in this flow. It only helps fill in the form.
-
-### 1. Normalise text
-
-`normalize(text)`: lower-case → strip punctuation → simple plural stemming (`keys` → `key`) → 2–3-word phrases (`student id card` → `idcard`) → map words to concepts (`airpod`, `earbud`, `headphone` → `audio`; `backpack`, `rucksack` → `bag` …) → drop stop words.
-
-Colour words (`black`, `dark`, `navy` …) are pulled out separately and feed the colour score. "Dark blue" counts as blue, not black. Place and time words ("library", "Monday") are dropped, because location and time are already scored on their own and shouldn't count twice.
-
-### 2. Hard rules (pair is never shown)
-
-- Both reports are the same type (two LOST or two FOUND)
-- Either report is not `OPEN`, or is **expired** (OPEN for more than 30 days, computed when read)
-- Staff already marked the pair **Not a match**
-- **Incompatible item types:** a different specific type under the same parent (Phone vs Earbuds) or a different parent (Wallet vs Phone case)
-- Found **more than 1 h before** the lost window starts (the 1 h allows for people misremembering)
-- Found **more than 30 days after** the lost window ends
-
-### 3. Weighted score (0–100)
-
-| Component | Max | Points |
-|---|---:|---|
-| **Category** | 25 | Same subcategory **25** · compatible through an "Other" catch-all **10** |
-| **Text** | 30 | Dice overlap of concept tokens `2·shared / (|A|+|B|)` × 30, **+8** if the brand fields match (capped at 30) |
-| **Colour** | 15 | Same family **15** · "Not sure" on either side **7** (neutral) · multicoloured vs anything **7** · different **0** ⚠ conflict |
-| **Location** | 15 | A place in common **15** · neighbouring places **9** · "Not sure" on either side **7** (neutral) · otherwise **0** |
-| **Time** | 15 | Inside the window (or up to 1 h before) or up to 6 h after it **15**, then linear decay to **0** at 14 days |
-
-Why Dice for text: "any word in common" would let a long description match on one generic word. A Jaccard-style ratio would punish short descriptions too hard. Dice sits between the two and is easy to explain.
-
-### 4. Bands and caps
-
-| Band | Score | UI |
-|---|---|---|
-| **Strong** | ≥ 70 | green |
-| **Possible** | 45–69 | amber |
-| **Weak** | 30–44 | grey, collapsed by default |
-| hidden | < 30 | not shown |
-
-Some pairs score well overall but have one specific problem a human must look at. **Caps** keep these out of the Strong band:
-
-- **Colour conflict** (red vs black) or **brand conflict** (Samsung vs Tecno) → at most **Possible**
-- **Category only matched via "Other"** → at most **Possible**
-- **Found more than 7 days later at a place that is not the same or next door** → at most **Weak**. Late alone or far alone are each weak evidence; together they make the match implausible (problem 4).
-
-A capped score is clamped to the band's top (69 or 44), so the score bar, the badge and the sort order always agree. The cap reason is shown on the card.
-
-### Worked example (from the test suite)
-
-> **Lost:** "black AirPods case near the cafeteria", Earbuds/Headphones, Black/dark, *Cafeteria*, lost 09:00–13:00
-> **Found:** "dark wireless earbud case beside the coffee shop", Earbuds/Headphones, Black/dark, *Coffee Shop*, found 12:00
-
-| Component | Working | Points |
-|---|---|---:|
-| Category | same subcategory | 25 / 25 |
-| Text | lost `{audio, case}`, found `{wireless, audio, case}` → 2·2 / (2+3) = 0.8 × 30 | 24 / 30 |
-| Colour | "black" and "dark" are both Black/dark | 15 / 15 |
-| Location | Cafeteria ↔ Coffee Shop are neighbours | 9 / 15 |
-| Time | 12:00 is inside the 09:00–13:00 window | 15 / 15 |
-| **Total** | | **88 → Strong** |
-
-What staff see:
-
-```
-Strong match  ███████████████░░  88
-✓ Same item type: Earbuds/Headphones          25/25
-✓ Similar words: audio, case                  24/30
-✓ Colour: black ≈ dark                        15/15
-✓ Location: Cafeteria is next to Coffee Shop   9/15
-✓ Found during the lost window                15/15
-🔒 Owner says: "Small cat sticker on the back"  |  Finder noticed: "Cat sticker on the back"
-💬 Ask the owner: what is on the back of the case?
-```
-
-For comparison: the same lost black backpack scores **79 (Strong)** against "dark backpack at the library entrance the same evening", but **44 (Weak, capped)** against "black backpack at the football field two weeks later".
-
-### Scaling
-
-The backend does not score every pair. For each report it first runs an indexed SQL pre-filter: opposite type, OPEN, not expired, same parent category (or "Other"), and a date range that mirrors the hard time rules (index on `(type, status, subcategory, eventStart)`). Only those candidates go through the engine. The engine checks every rule again, so the pre-filter can only ever narrow the candidates, never let a wrong one through.
+- **Validate:** every field is checked with Zod: title length, at least one place, no future dates, a valid contact, and photos must really be JPEG, PNG or WebP. Errors come back per field, so the form jumps to the right step instead of losing what the person typed.
+- **Save:** the report is stored as `OPEN`. Private details, contacts and photos are saved too, but only signed-in staff can ever read them.
+- **Clarity check:** if the description is vague, the reporter gets 1–3 follow-up questions. Gemini only rewords them. When the AI is off, times out or returns bad JSON, the rule-based questions are used, so the app never depends on the AI.
+- **SQL prefilter:** one indexed query keeps only reports that could possibly match: opposite type, `OPEN`, not expired, same category, and a plausible date window. The engine doesn't waste time scoring the rest.
+- **Hard rules:** pairs that can't be the same item are dropped and never shown: phone vs earbuds, found before it was lost, found more than 30 days later, or already marked *Not a match* by staff.
+- **Score:** five signals add up to 0–100: item type 25, matching words 30 (synonyms like AirPods ≈ earbuds count), colour family 15, place 15 (neighbouring places get partial credit), time 15. Each signal produces a sentence staff can read. A colour or brand conflict caps the result at `POSSIBLE`; found much later and far away caps it at `WEAK`. Below 30 it is hidden. All numbers are in [`constants.ts`](backend/src/matching/constants.ts).
+- **Respond:** the reporter sees their best matches with the reasons, but never the other person's contact or private details.
+- **Staff review:** staff compare the owner's and finder's private details and photos. *Not a match* stores a `REJECTED` decision so the pair is never suggested again. *Confirm* sets both reports to `MATCH_PENDING` in one transaction.
+- **Handover:** the owner must answer the verification question before staff can mark both reports `RETURNED`. *Undo* puts both back to `OPEN`, and they're matched again.
 
 ## Assumptions
 
