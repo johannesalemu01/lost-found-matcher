@@ -24,8 +24,6 @@ export function ReportCard({ report, onClose }: { report: PublicReport | StaffRe
         "hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md",
       )}
     >
-      {/* Coloured edge: rose = lost, teal = found */}
-      <div className={cx("h-1", lost ? "bg-rose-400" : "bg-accent-500")} />
 
       {/* Staff-only photo, shown large. Students never receive it. */}
       {staff?.hasPhoto && (
@@ -43,7 +41,8 @@ export function ReportCard({ report, onClose }: { report: PublicReport | StaffRe
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className={cx("text-[11px] font-semibold uppercase tracking-wider", lost ? "text-rose-600" : "text-accent-700")}>
+              <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-stone-500">
+                <span className={cx("h-1.5 w-1.5 shrink-0 rounded-full", lost ? "bg-rose-400" : "bg-accent-500")} aria-hidden />
                 {lost ? "Lost" : "Found"} · {SUBCATEGORY_LABELS[report.subcategory]}
               </p>
               <h3 className="mt-0.5 truncate text-base font-semibold text-stone-900">{report.title}</h3>

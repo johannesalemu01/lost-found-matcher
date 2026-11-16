@@ -50,12 +50,14 @@ export function RecentFound() {
               key={r.id}
               className="group flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              <div className="h-1 bg-accent-500" />
               <div className="flex flex-1 flex-col p-4">
                 <div className="flex items-start gap-3">
                   <ItemTile type="FOUND" category={r.category} colorFamily={r.colorFamily} size="sm" />
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-700">{SUBCATEGORY_LABELS[r.subcategory]}</p>
+                    <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-stone-500">
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-500" aria-hidden />
+                      {SUBCATEGORY_LABELS[r.subcategory]}
+                    </p>
                     <h3 className="line-clamp-2 text-sm font-semibold text-stone-900">{r.title}</h3>
                   </div>
                 </div>
