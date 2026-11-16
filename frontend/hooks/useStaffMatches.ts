@@ -1,16 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { MatchBand } from "@lf/shared";
 import { useToast } from "@/context/ToastContext";
 import type { StaffMatchesResponse } from "@/interfaces";
 import { matchesService } from "@/services";
 
 /**
- * Loads the staff review data and runs decisions (confirm / reject / undo / returned / close),
- * refreshing afterwards and offering "Undo" in the toast where it makes sense.
+ * Loads all suggestions + pairs awaiting handover (filtering by band happens in the UI so the
+ * counts stay correct), and runs decisions with a refresh and an "Undo" toast where it makes sense.
  */
-export function useStaffMatches(band: MatchBand | "", enabled: boolean) {
+export function useStaffMatches(enabled: boolean) {
   const toast = useToast();
   const [data, setData] = useState<StaffMatchesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,16 +17,14 @@ export function useStaffMatches(band: MatchBand | "", enabled: boolean) {
 
   const reload = useCallback(() => {
     setError(null);
-    matchesService
-      .list(band || undefined)
+    return matchesService
+      .list()
       .then(setData)
       .catch((e) => setError(e.message));
-  }, [band]);
+  }, []);
 
   useEffect(() => {
-    if (!enabled) return;
-    setData(null);
-    reload();
+    if (enabled) reload();
   }, [enabled, reload]);
 
   const run = useCallback(
@@ -36,7 +33,7 @@ export function useStaffMatches(band: MatchBand | "", enabled: boolean) {
       try {
         await action();
         toast(success, undo ? { action: { label: "Undo", onClick: () => run(key, undo, "Undone.") } } : undefined);
-        reload();
+        await reload();
       } catch (e) {
         toast(e instanceof Error ? e.message : "That didn’t work", { tone: "error" });
       } finally {

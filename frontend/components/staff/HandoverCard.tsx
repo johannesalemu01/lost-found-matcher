@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { locationLabel } from "@lf/shared";
 import type { AwaitingHandover } from "@/interfaces";
 import { formatDateTime } from "@/utils/format";
 import { Button, Card } from "@/components/ui";
-import { ContactLine } from "./ContactLine";
-import { PhotoComparison } from "./PhotoComparison";
-import { PrivateDetails } from "./PrivateDetails";
+import { SectionLabel, VerifyPanel } from "./VerifyPanel";
 
-/** A confirmed pair: "Mark returned" stays disabled until the verification box is ticked. */
+/**
+ * A confirmed pair waiting for the owner to collect it.
+ * Step 1: ask the question. Step 2: tick. Step 3: mark returned (disabled until ticked).
+ */
 export function HandoverCard({
   match,
   busy,
@@ -21,35 +23,48 @@ export function HandoverCard({
   onReturned: () => void;
 }) {
   const [verified, setVerified] = useState(false);
+  const { lost, found } = match;
+
   return (
-    <Card className="border-amber-200 p-4 sm:p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm text-stone-600">
-          <span className="font-semibold text-stone-900">{match.lost.title}</span> ↔ <span className="font-semibold text-stone-900">{match.found.title}</span>
-        </p>
+    <Card className="overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 px-4 py-3 sm:px-5">
+        <h3 className="font-semibold text-stone-900">
+          {lost.title} <span className="font-normal text-stone-400">↔</span> {found.title}
+        </h3>
         <p className="text-xs text-stone-500">Confirmed {formatDateTime(match.confirmedAt)}</p>
       </div>
-      <div className="mt-3 grid gap-4 md:grid-cols-2">
-        <div className="space-y-3">
-          <PrivateDetails lost={match.lost} found={match.found} />
-          <PhotoComparison lost={match.lost} found={match.found} />
-          <ContactLine report={match.lost} />
-        </div>
-        <div className="space-y-3">
-          <p className="rounded-lg bg-stone-50 p-3 text-sm font-medium text-stone-700">💬 {match.verificationQuestion}</p>
-          <label className="flex cursor-pointer items-start gap-2 font-normal">
-            <input type="checkbox" className="mt-0.5" checked={verified} onChange={(e) => setVerified(e.target.checked)} />
-            <span className="text-sm text-stone-700">Owner answered the verification question correctly</span>
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={onReturned} disabled={!verified || busy} title={verified ? undefined : "Tick the verification box first"}>
-              Mark returned
-            </Button>
-            <Button variant="ghost" onClick={onUndo} disabled={busy}>
-              Undo match
-            </Button>
+
+      <div className="grid gap-5 px-4 py-4 sm:px-5 md:grid-cols-2">
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <SectionLabel>Owner collecting</SectionLabel>
+            <p className="text-sm text-stone-800">
+              {lost.contactName} · <span className="text-stone-600">{lost.contactEmailOrPhone}</span>
+            </p>
+            <p className="text-xs text-stone-500">Lost near {lost.locations.map(locationLabel).join(", ")}</p>
+          </div>
+          <div className="space-y-1.5">
+            <SectionLabel>Handed in by</SectionLabel>
+            <p className="text-sm text-stone-800">
+              {found.contactName} · <span className="text-stone-600">{found.contactEmailOrPhone}</span>
+            </p>
+            <p className="text-xs text-stone-500">Found at {found.locations.map(locationLabel).join(", ")}</p>
           </div>
         </div>
+        <VerifyPanel lost={lost} found={found} question={match.verificationQuestion} />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 border-t border-stone-100 bg-stone-50/60 px-4 py-3 sm:px-5">
+        <label className="mr-auto flex cursor-pointer items-center gap-2 font-normal">
+          <input type="checkbox" checked={verified} onChange={(e) => setVerified(e.target.checked)} />
+          <span className="text-sm text-stone-700">Owner answered the verification question correctly</span>
+        </label>
+        <Button variant="ghost" className="px-3 py-1.5" onClick={onUndo} disabled={busy}>
+          Undo match
+        </Button>
+        <Button className="px-3 py-1.5" onClick={onReturned} disabled={!verified || busy} title={verified ? undefined : "Tick the verification box first"}>
+          Mark returned
+        </Button>
       </div>
     </Card>
   );
