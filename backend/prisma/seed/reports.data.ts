@@ -16,6 +16,8 @@ export const ago = (ms: number) => new Date(now - ms);
 export type SeedReport = Omit<Prisma.ReportCreateInput, "category" | "subcategory" | "eventEnd" | "createdAt"> & {
   key: string;
   subcategory: Subcategory;
+  /** Demo photo in prisma/seed/photos/ (staff-only, verification only). */
+  photo?: string;
   eventEnd?: Date;
   createdAt?: Date;
 };
@@ -63,6 +65,7 @@ export const seedReports: SeedReport[] = [
     eventStart: ago(6 * H),
     eventEnd: ago(4 * H),
     privateDetail: "Small cat sticker on the back of the case.",
+    photo: "owner-airpods.png",
     contactName: "Liya Mekonnen",
     contactEmailOrPhone: "+251911000111",
   },
@@ -76,6 +79,7 @@ export const seedReports: SeedReport[] = [
     locations: ["COFFEE_SHOP"],
     eventStart: ago(3 * H),
     privateDetail: "Cat sticker on the back.",
+    photo: "finder-earbud-case.png",
     contactName: "Yonas Girma",
     contactEmailOrPhone: "yonas@example.edu",
   },
