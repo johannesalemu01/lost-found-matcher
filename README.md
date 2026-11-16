@@ -16,7 +16,7 @@ A small, complete web app for a university Lost & Found desk. Students report it
 ```bash
 npm run setup   # install, start Postgres (docker compose), migrate, seed demo data
 npm run dev     # API on http://localhost:4000, web on http://localhost:3000
-npm test        # 37 tests – no database, no network, no AI key needed
+npm test        # 45 tests – no database, no network, no AI key needed
 ```
 
 `npm run setup` creates `backend/.env` and `frontend/.env` from the `.env.example` files if they are missing. PostgreSQL is exposed on host port **5440** rather than 5432, so it doesn't clash with a Postgres already installed locally.
@@ -49,7 +49,7 @@ Matching lost and found reports is not a search problem. Two strangers describe 
 | 2 | **Subjective colours** | "black" vs "dark", "navy" vs "blue" | Colours are compared as **families** (Black/dark, Blue/navy …), not exact names. "Not sure" is a valid answer and scores neutral |
 | 3 | **Uncertain time and place** | "between 12 and 5, library or coffee shop – or I don't know" | Owners give a **time window** and **several places** (or *Not sure*). Neighbouring places get partial credit. Unknown is neutral, not a penalty |
 | 4 | **Impossible matches** | Found *before* it was lost; a phone vs earbuds; found weeks later across campus | **Hard rules** remove impossible pairs before scoring; "much later *and* far away" caps the result at Weak |
-| 5 | **False claims** | Someone reads the public listing and claims the item | Each report has a **private detail** shown only to staff. Staff compare the owner's and finder's details and ask a generated verification question. *Mark returned* is disabled until they tick that the owner answered correctly |
+| 5 | **False claims** | Someone reads the public listing and claims the item | Each report has a **private detail** and an optional **photo** (for the owner: one taken *before* the loss), both shown only to staff. Staff compare owner vs finder side by side and ask a generated verification question. *Mark returned* is disabled until they tick that the owner answered correctly |
 | 6 | **Vague descriptions** | "lost my bag somewhere" | A **clarity check** asks 1–3 follow-up questions while the person is typing. Vague reports still match, but with lower scores |
 
 ## Approach
@@ -157,14 +157,16 @@ The backend does not score every pair. For each report it first runs an indexed 
 | **Express (separate API)** | A small, well-known HTTP layer that keeps the matching engine and the database independent of the UI framework. Routes stay thin: validate (Zod) → service → JSON. |
 | **PostgreSQL over MongoDB** | The data is relational and benefits from constraints: lost/found decisions reference both reports, `UNIQUE(lostId, foundId)`, `CHECK (eventEnd >= eventStart)`, composite indexes for the pre-filter, and a confirm that must update two reports and a decision **in one transaction**. Arrays (`locations text[]`) cover the one document-like field. Postgres also opens the door to `pgvector` later. |
 | **Rules, not AI, as the judge** | Matching decides whose phone someone walks away with. It must be **deterministic, explainable and testable**: the same input always gives the same score, every point has a sentence, and the edge cases are pinned by unit tests. An LLM would be harder to audit and could be prompt-injected by a description. |
-| **AI optional** | The app must run anywhere, offline, at zero cost. If `GEMINI_API_KEY` is set, the model in `GEMINI_EXTRACTION_MODEL` is used for (a) suggesting form fields from free text and (b) phrasing clarity questions. Output must be strict JSON validated by Zod, with a 5 s timeout. On any failure the app falls back to rules and logs a warning. The rules still decide *whether* a report is vague, and the person confirms every suggested field. Only the public title and description are sent, never private details or contact info. |
+| **Photos verify, they don't score** | A photo the owner took *before* the loss is strong ownership evidence, so staff see it next to the finder's photo. It is **not** fed into the score: comparing images would need AI to judge matches, generic items (every black AirPods case) look alike, and a stock photo proves nothing; only a human can judge a personal photo. Photos are staff-only (they often show faces, rooms or lock screens), checked by file signature rather than file name, limited to 5 MB, resized in the browser (which also strips EXIF/GPS), served with `no-store`, and never in public responses. |
+| **AI optional** | The app must run anywhere, offline, at zero cost. If `GEMINI_API_KEY` is set, the model in `GEMINI_EXTRACTION_MODEL` is used for (a) suggesting form fields from free text, or from the photo when the person clicks *Suggest fields from photo*, and (b) phrasing clarity questions. Output must be strict JSON validated by Zod, with a 5 s timeout. On any failure the app falls back to rules and logs a warning. The rules still decide *whether* a report is vague, and the person confirms every suggested field. Only the public title and description are sent, never private details or contact info. |
 | **Pure matching module** | `backend/src/matching` imports nothing from Express or Prisma. It is plain data in, plain data out, which makes it trivial to test and to explain. |
 | **Shared package** | Categories, campus layout, colour families and types live in `/shared` and are used by both the frontend and the backend, so the form chips and the engine can't drift apart. |
 
 ## Intentionally not built
 
 - **Real authentication / SSO.** Replaced by a role toggle so reviewers can see both sides.
-- **Photo upload / image matching.** Valuable, but it adds storage, moderation and privacy work beyond the scope.
+- **Image similarity in the score.** Photos are for staff verification only (see *Photos verify, they don't score*).
+- **Cloud storage for photos.** Photos are stored on local disk (`backend/uploads/`, gitignored); a private bucket with signed URLs would replace this in production.
 - **Notifications (email/SMS).** Students check *My reports*, and staff contact people manually.
 - **Editing reports after submission.** Staff can close a report; the person can submit a new one.
 - **An admin UI for the campus map and dictionary.** These are config files.
@@ -173,7 +175,7 @@ The backend does not score every pair. For each report it first runs an indexed 
 ## Future improvements
 
 - **Semantic text matching with embeddings:** store `gemini-embedding-001` vectors in **pgvector** and add cosine similarity as an extra text signal. The rule-based concepts stay as an explainable floor.
-- **Photo matching** (finder's photo vs the owner's photo or description), visible to staff only.
+- **Photo similarity as a staff hint** (image embeddings), shown next to the photos but still kept out of the score.
 - **Notifications** when a strong match appears or a match is confirmed.
 - **Feedback loop to tune weights:** confirmed and rejected decisions are already stored. Use them to calibrate weights and band thresholds and to grow the concept dictionary.
 - **Real auth/SSO** (university login) and role-based access. Rate-limit `/reports/mine`.
@@ -195,7 +197,7 @@ backend/
 ├── prisma/
 │   ├── schema.prisma              tables, enums, indexes
 │   ├── migrations/                SQL incl. CHECK (eventEnd >= eventStart)
-│   └── seed/                      index.ts (runner) + reports.data.ts (demo data)
+│   └── seed/                      index.ts (runner) + reports.data.ts (demo data) + photos/ (2 demo images)
 ├── src/
 │   ├── server.ts                  starts the HTTP server
 │   ├── app.ts                     Express app: CORS, JSON, /api, error handling
@@ -204,7 +206,7 @@ backend/
 │   ├── middlewares/               require-staff.ts, error-handler.ts
 │   ├── controllers/               HTTP in/out only: validate input → call service → send JSON
 │   ├── validators/                Zod schemas for every request body/query (+ AI output schemas)
-│   ├── services/                  business logic + transactions; services/ai/ = Gemini client + prompts
+│   ├── services/                  business logic + transactions; photo.service.ts (staff-only uploads); services/ai/ = Gemini client + prompts
 │   ├── models/                    all Prisma queries: report.model.ts (incl. SQL pre-filter), match-decision.model.ts
 │   ├── interfaces/                backend DTO / row types
 │   ├── utils/                     errors, async-handler, validate, serializers (public vs staff), status messages
@@ -217,7 +219,7 @@ backend/
 │       ├── engine.ts              pair pipeline, caps, bands, findMatchesFor
 │       ├── clarity.ts · extraction.ts · verification.ts
 │       └── types.ts · index.ts
-└── tests/                         mirrors src/: matching/, services/, validators/, fixtures/
+└── tests/                         mirrors src/: matching/, services/, validators/, utils/, fixtures/
 
 frontend/
 ├── app/                           routes only – each page.tsx renders one page component
@@ -225,9 +227,9 @@ frontend/
 │   ├── ui/                        Button, Card, Chip, Badges, ScoreBar, ReasonList, States…
 │   ├── layout/                    Header, RoleToggle
 │   ├── home/ · reports/ · my-reports/ · staff/
-│   └── report-form/               ReportWizard, Stepper, steps/{Item,PlaceTime,Contact}Step, QualityHint, SuggestionPanel, SubmittedView
+│   └── report-form/               ReportWizard, Stepper, steps/{Item,PlaceTime,Contact}Step, PhotoField, QualityHint, SuggestionPanel, SubmittedView
 ├── services/                      api-client.ts + one service per API resource
-├── hooks/                         useClarityCheck, useStaffMatches, useDebouncedValue
+├── hooks/                         useClarityCheck, useStaffMatches, useAiStatus, useDebouncedValue
 ├── context/                       RoleContext, ToastContext
 ├── interfaces/                    API + form types
 ├── utils/                         format (local time), validation, time-presets, storage, cx
@@ -240,7 +242,8 @@ shared/src/                        categories, campus, colours, types – used b
 
 | Method | Path | Who | Notes |
 |---|---|---|---|
-| POST | `/api/reports` | anyone | validate + save; returns the report, top matches and clarity questions |
+| POST | `/api/reports` | anyone | validate + save; returns the report, top matches and clarity questions. JSON, or multipart with `data` (JSON) + optional `photo` |
+| GET | `/api/reports/:id/photo` | staff | the staff-only photo (`Cache-Control: private, no-store`) |
 | GET | `/api/reports?type=&status=&q=&category=` | anyone | public fields only (staff also get contact and private detail) |
 | GET | `/api/reports/mine?contact=` | anyone | own reports, status, match count, friendly message |
 | GET | `/api/stats` | anyone | numbers for the home page |
@@ -249,5 +252,6 @@ shared/src/                        categories, campus, colours, types – used b
 | POST | `/api/matches/returned` | staff | `{lostId, foundId, verified: true}`; refused without `verified` |
 | POST | `/api/reports/:id/close` | staff | |
 | POST | `/api/assist/extract` · `clarity` | anyone | AI if configured, otherwise rules |
+| POST | `/api/assist/extract-photo` | anyone | multipart `photo`; AI only (empty suggestions without a key); photo is not stored |
 
 Errors are always `{ "error": { "message": "...", "fields": { "title": "At least 3 characters" } } }` with status 400, 403, 404 or 409.
