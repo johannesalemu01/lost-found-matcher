@@ -63,6 +63,47 @@ Matching lost and found reports is not a search problem. Two strangers describe 
 
 The code is in [`backend/src/matching`](backend/src/matching), and all the numbers are in [`constants.ts`](backend/src/matching/constants.ts).
 
+```mermaid
+flowchart TD
+  A["New lost or found report"] --> B{"Valid input?<br/>(Zod)"}
+  B -->|no| B1["400 with field errors<br/>person fixes and resubmits"]
+  B -->|yes| C["Save report<br/>+ clarity questions if vague"]
+  C --> D["SQL pre-filter candidates<br/>opposite type · open · not expired<br/>same parent category · date range"]
+  D --> E{"Hard rules<br/>for each pair"}
+  E -->|"phone vs earbuds · found before lost<br/>found 30+ days later · rejected before"| X["Excluded<br/>never shown"]
+  E -->|passes| F["Normalise text<br/>synonyms → concepts · colour words apart"]
+  F --> G["Score 5 signals → 0–100<br/>category 25 · text 30 · colour 15<br/>location 15 · time 15"]
+  G --> H{"Any red flag?"}
+  H -->|"colour or brand conflict<br/>or only 'Other' category"| H1["Cap at Possible ≤ 69"]
+  H -->|"found 7+ days later<br/>and not nearby"| H2["Cap at Weak ≤ 44"]
+  H -->|none| I{"Band"}
+  H1 --> I
+  H2 --> I
+  I -->|"≥ 70"| S["Strong"]
+  I -->|"45–69"| P["Possible"]
+  I -->|"30–44"| W["Weak (collapsed)"]
+  I -->|"&lt; 30"| N["Hidden"]
+  S --> R["Staff review<br/>reasons · private details · photos"]
+  P --> R
+  W --> R
+  R -->|Not a match| RJ["Rejected<br/>never suggested again"]
+  R -->|Confirm| CF["Both reports: match pending"]
+  CF --> V{"Owner answers the<br/>verification question?"}
+  V -->|yes, staff ticks the box| RT["Returned"]
+  V -->|no| U["Undo: both reports reopen"]
+```
+
+**In short**
+
+1. **Check and save.** The input is validated. Vague descriptions get follow-up questions, but they're still saved and still matched.
+2. **Find candidates cheaply.** One indexed SQL query keeps only reports that could possibly match.
+3. **Rule out the impossible.** Hard rules remove pairs that can't be the same item. They're never scored and never shown.
+4. **Score with explanations.** Five signals add up to 0–100, and each one produces a sentence staff can read ("Colour: black ≈ dark").
+5. **Cap on red flags.** A conflict can't hide behind a high total score, so it caps the band.
+6. **A human decides.** Staff compare private details and photos, then confirm or reject. The item is handed over only after the owner answers the verification question.
+
+The AI never appears in this flow. It only helps fill in the form.
+
 ### 1. Normalise text
 
 `normalize(text)`: lower-case → strip punctuation → simple plural stemming (`keys` → `key`) → 2–3-word phrases (`student id card` → `idcard`) → map words to concepts (`airpod`, `earbud`, `headphone` → `audio`; `backpack`, `rucksack` → `bag` …) → drop stop words.
