@@ -20,7 +20,23 @@ npm test        # 52 tests – no database, network or AI key needed
 
 ## Screenshots
 
-_See [`docs/screenshots`](docs/screenshots)._
+All images are in the [`screenshots/`](screenshots) folder.
+
+| Home | Report a found item |
+|---|---|
+| ![Home](screenshots/home_page.png) | ![Report form](screenshots/report_found-item_page.png) |
+
+| Browse – lost items | Browse – found items |
+|---|---|
+| ![Lost items](screenshots/lost_item_page.png) | ![Found items](screenshots/Found_item_page.png) |
+
+| My reports | Staff – match review |
+|---|---|
+| ![My reports](screenshots/my_reports_page.png) | ![Staff match review](screenshots/staff_match-review_page.png) |
+
+| Staff – awaiting handover |  |
+|---|---|
+| ![Staff handover](screenshots/staff_match-review-2_page.png) |  |
 
 ---
 
