@@ -78,6 +78,10 @@ export const CONCEPTS: Record<string, string> = {
   keyring: "keys",
   fob: "keys",
   lanyard: "lanyard",
+  // charms and keyrings people describe differently
+  sneaker: "shoe",
+  shoe: "shoe",
+  trainer: "shoe",
   // books
   book: "book",
   textbook: "book",

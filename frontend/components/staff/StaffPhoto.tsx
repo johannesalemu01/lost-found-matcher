@@ -32,7 +32,7 @@ export function StaffPhoto({ reportId, alt, className }: { reportId: string; alt
   if (failed) return <div className={cx("grid place-items-center bg-stone-100 text-xs text-stone-400", className)}>Photo unavailable</div>;
   if (!url) return <div className={cx("animate-pulse bg-stone-100", className)} aria-label="Loading photo" />;
   return (
-    <a href={url} target="_blank" rel="noreferrer" title="Open full size">
+    <a href={url} target="_blank" rel="noreferrer" title="Open full size" className="block">
       {/* eslint-disable-next-line @next/next/no-img-element -- blob URL, not optimisable */}
       <img src={url} alt={alt} className={cx("object-cover", className)} />
     </a>

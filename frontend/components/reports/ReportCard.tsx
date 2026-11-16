@@ -27,6 +27,16 @@ export function ReportCard({ report, onClose }: { report: PublicReport | StaffRe
       {/* Coloured edge: rose = lost, teal = found */}
       <div className={cx("h-1", lost ? "bg-rose-400" : "bg-accent-500")} />
 
+      {/* Staff-only photo, shown large. Students never receive it. */}
+      {staff?.hasPhoto && (
+        <div className="relative">
+          <StaffPhoto reportId={staff.id} alt={`Photo of ${staff.title}`} className="block h-48 w-full" />
+          <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
+            🔒 Staff-only photo
+          </span>
+        </div>
+      )}
+
       <div className="flex gap-4 p-4 sm:p-5">
         <ItemTile type={report.type} category={report.category} colorFamily={report.colorFamily} />
 
@@ -72,9 +82,6 @@ export function ReportCard({ report, onClose }: { report: PublicReport | StaffRe
             <p>
               <span className="font-medium text-stone-800">🔒 Private detail:</span> {staff.privateDetail}
             </p>
-          )}
-          {staff.hasPhoto && (
-            <StaffPhoto reportId={staff.id} alt={`Photo of ${staff.title}`} className="h-24 w-32 rounded-md ring-1 ring-stone-200" />
           )}
         </div>
       )}
