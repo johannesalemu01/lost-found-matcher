@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { ReportType } from "@lf/shared";
+import { parentOf, type ReportType, type Subcategory } from "@lf/shared";
 import { REPORT_FORM_STEPS, STORAGE_KEYS } from "@/config/constants";
 import { useToast } from "@/context/ToastContext";
 import { useClarityCheck } from "@/hooks/useClarityCheck";
@@ -18,11 +18,11 @@ import { ItemStep } from "./steps/ItemStep";
 import { PlaceTimeStep } from "./steps/PlaceTimeStep";
 import { ContactStep } from "./steps/ContactStep";
 
-function initialState(isLost: boolean): ReportFormState {
+function initialState(isLost: boolean, sub: Subcategory | null): ReportFormState {
   const now = new Date();
   return {
-    category: null,
-    subcategory: null,
+    category: sub ? parentOf(sub) : null,
+    subcategory: sub,
     title: "",
     description: "",
     colorFamily: "UNKNOWN",
@@ -38,11 +38,11 @@ function initialState(isLost: boolean): ReportFormState {
 }
 
 /** Guided 3-step report form: What is it? → Where & when? → Contact. */
-export function ReportWizard({ type }: { type: ReportType }) {
+export function ReportWizard({ type, initialSubcategory = null }: { type: ReportType; initialSubcategory?: Subcategory | null }) {
   const toast = useToast();
   const isLost = type === "LOST";
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<ReportFormState>(() => initialState(isLost));
+  const [form, setForm] = useState<ReportFormState>(() => initialState(isLost, initialSubcategory));
   const [errors, setErrors] = useState<ReportFormErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<CreatedReportResponse | null>(null);

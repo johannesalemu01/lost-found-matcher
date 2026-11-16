@@ -8,3 +8,4 @@ export { FieldError } from "./FieldError";
 export { Chip } from "./Chip";
 export { PageHeader } from "./PageHeader";
 export { ProgressTracker } from "./ProgressTracker";
+export { Icon } from "./Icon";

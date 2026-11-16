@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { CATEGORY_INFO, COLOR_INFO, locationLabel, type PublicReport } from "@lf/shared";
+import { SUBCATEGORY_LABELS, locationLabel, type PublicReport } from "@lf/shared";
 import { reportsService } from "@/services";
 import { timeAgo } from "@/utils/format";
-import { Card } from "@/components/ui";
+import { Icon } from "@/components/ui";
+import { ItemTile } from "@/components/reports/ItemTile";
 
 const SHOW = 4;
 
@@ -37,7 +38,7 @@ export function RecentFound() {
       {!items ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {Array.from({ length: SHOW }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-xl bg-stone-200/60" />
+            <div key={i} className="h-36 animate-pulse rounded-2xl bg-stone-200/60" />
           ))}
         </div>
       ) : items.length === 0 ? (
@@ -45,28 +46,41 @@ export function RecentFound() {
       ) : (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {items.map((r) => (
-            <Card key={r.id} className="flex flex-col p-4">
-              <div className="flex items-center gap-2 text-xs text-stone-500">
-                <span aria-hidden className="text-base">
-                  {CATEGORY_INFO[r.category].icon}
-                </span>
-                <span>Found {timeAgo(r.eventStart)}</span>
+            <article
+              key={r.id}
+              className="group flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="h-1 bg-accent-500" />
+              <div className="flex flex-1 flex-col p-4">
+                <div className="flex items-start gap-3">
+                  <ItemTile type="FOUND" category={r.category} colorFamily={r.colorFamily} size="sm" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-700">{SUBCATEGORY_LABELS[r.subcategory]}</p>
+                    <h3 className="line-clamp-2 text-sm font-semibold text-stone-900">{r.title}</h3>
+                  </div>
+                </div>
+                <ul className="mt-3 space-y-1 text-xs text-stone-500">
+                  <li className="flex items-center gap-1.5">
+                    <Icon name="pin" />
+                    <span className="truncate">{r.locations.map(locationLabel).join(", ")}</span>
+                  </li>
+                  <li className="flex items-center gap-1.5">
+                    <Icon name="clock" />
+                    <span>Found {timeAgo(r.eventStart)}</span>
+                  </li>
+                </ul>
+                <Link
+                  href={`/report/new?type=lost&sub=${r.subcategory}`}
+                  className="mt-auto inline-flex items-center gap-1 self-start pt-3 text-xs font-medium text-rose-700 hover:underline"
+                >
+                  This is mine <Icon name="arrow" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </Link>
               </div>
-              <h3 className="mt-2 line-clamp-2 font-medium text-stone-900">{r.title}</h3>
-              <p className="mt-auto pt-2 text-xs text-stone-500">
-                {r.colorFamily !== "UNKNOWN" && (
-                  <span
-                    className="mr-1.5 inline-block h-2.5 w-2.5 rounded-full align-middle ring-1 ring-stone-300"
-                    style={{ background: COLOR_INFO[r.colorFamily].swatch }}
-                  />
-                )}
-                {r.locations.map(locationLabel).join(", ")}
-              </p>
-            </Card>
+            </article>
           ))}
         </div>
       )}
-      <p className="text-xs text-stone-500">Recognise something? Report it as lost – staff will verify it’s yours before handover.</p>
+      <p className="text-xs text-stone-500">Recognise something? Tap “This is mine” – staff will verify it’s yours before handover.</p>
     </section>
   );
 }
