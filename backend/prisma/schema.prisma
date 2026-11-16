@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum values mirror /shared/src (categories.ts, colors.ts, types.ts).
+
+enum ReportType {
+  LOST
+  FOUND
+}
+
+enum ReportStatus {
+  OPEN
+  MATCH_PENDING
+  RETURNED
+  CLOSED
+}
+
+enum Category {
+  ELECTRONICS
+  BAGS
+  DOCUMENTS
+  KEYS
+  WALLET
+  CLOTHING
+  BOTTLE
+  BOOKS
+  OTHER
+}
+
+enum Subcategory {
+  PHONE
+  EARBUDS_HEADPHONES
+  LAPTOP_TABLET
+  CHARGER_CABLE
+  OTHER_ELECTRONICS
+  BACKPACK
+  HANDBAG
+  LAPTOP_BAG
+  OTHER_BAG
+  STUDENT_ID
+  NATIONAL_ID
+  OTHER_DOCUMENT
+  KEYS
+  WALLET_PURSE
+  JACKET_HOODIE
+  SCARF_HAT
+  OTHER_CLOTHING
+  BOTTLE_FLASK
+  BOOK_NOTEBOOK
+  OTHER
+}
+
+enum ColorFamily {
+  BLACK_DARK
+  WHITE_LIGHT
+  GREY_SILVER
+  BLUE
+  RED_PINK
+  GREEN
+  YELLOW_ORANGE
+  BROWN_BEIGE
+  MULTI
+  UNKNOWN
+}
+
+enum Decision {
+  CONFIRMED
+  REJECTED
+}
+
+model Report {
+  id                  String       @id @default(uuid()) @db.Uuid
+  type                ReportType
+  category            Category
+  subcategory         Subcategory
+  title               String       @db.VarChar(80)
+  description         String       @db.VarChar(1000)
+  colorFamily         ColorFamily  @default(UNKNOWN)
+  brand               String?      @db.VarChar(50)
+  /// One or more campus location ids; may be ["NOT_SURE"].
+  locations           String[]
+  /// UTC. LOST: start of the window it was lost in. FOUND: time found (start = end).
+  eventStart          DateTime     @db.Timestamptz(3)
+  eventEnd            DateTime     @db.Timestamptz(3)
+  /// Staff-only. Never returned by public endpoints.
+  privateDetail       String?      @db.VarChar(300)
+  contactName         String       @db.VarChar(80)
+  contactEmailOrPhone String       @db.VarChar(120)
+  status              ReportStatus @default(OPEN)
+  createdAt           DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime     @updatedAt @db.Timestamptz(3)
+
+  lostDecisions  MatchDecision[] @relation("LostReport")
+  foundDecisions MatchDecision[] @relation("FoundReport")
+
+  // CHECK ("eventEnd" >= "eventStart") is added in the migration SQL (Prisma has no syntax for it).
+  @@index([type, status, subcategory, eventStart])
+  @@index([contactEmailOrPhone])
+}
+
+model MatchDecision {
+  id        String   @id @default(uuid()) @db.Uuid
+  lostId    String   @db.Uuid
+  foundId   String   @db.Uuid
+  decision  Decision
+  /// Staff ticked "owner answered the verification question correctly".
+  verified  Boolean  @default(false)
+  note      String?  @db.VarChar(500)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  lost  Report @relation("LostReport", fields: [lostId], references: [id], onDelete: Cascade)
+  found Report @relation("FoundReport", fields: [foundId], references: [id], onDelete: Cascade)
+
+  @@unique([lostId, foundId])
+}
