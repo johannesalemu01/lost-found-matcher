@@ -1,5 +1,3 @@
-import { STORAGE_KEYS } from "@/config/constants";
-
 export type Role = "student" | "staff";
 
 /** localStorage can throw (private mode, blocked storage) – every access is guarded. */
@@ -18,8 +16,4 @@ export function writeStorage(key: string, value: string): void {
   } catch {
     /* ignore – it's only a convenience */
   }
-}
-
-export function getStoredRole(): Role {
-  return readStorage(STORAGE_KEYS.role) === "staff" ? "staff" : "student";
 }

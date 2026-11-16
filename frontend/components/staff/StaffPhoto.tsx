@@ -5,8 +5,8 @@ import { reportsService } from "@/services";
 import { cx } from "@/utils/cx";
 
 /**
- * A staff-only photo. <img src> cannot send the x-role header, so the image is fetched
- * with it and shown from an in-memory object URL (nothing is cached or made public).
+ * A staff-only photo, fetched with the staff session cookie
+ * and shown from an in-memory object URL (nothing is cached or made public).
  */
 export function StaffPhoto({ reportId, alt, className }: { reportId: string; alt: string; className?: string }) {
   const [url, setUrl] = useState<string | null>(null);

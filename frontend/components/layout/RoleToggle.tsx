@@ -1,30 +1,74 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useRole } from "@/context/RoleContext";
+import { useToast } from "@/context/ToastContext";
 import { cx } from "@/utils/cx";
-import type { Role } from "@/utils/storage";
+import { StaffLoginForm } from "./StaffLoginForm";
 
-/** Student / Staff switch – a demo stand-in for real authentication. */
+/** "Student" is the default; "Staff" requires signing in with the staff passcode. */
 export function RoleToggle() {
-  const { role, setRole } = useRole();
+  const { role, ready, signOut } = useRole();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+
+  // Close the pop-over on outside click or Escape.
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => !panel.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  if (!ready) return <div className="ml-auto h-8 w-32" />;
+
   return (
-    <div className="ml-auto flex items-center gap-2 text-xs">
-      <span className="hidden text-stone-500 sm:inline">View as</span>
-      <div className="inline-flex rounded-lg bg-stone-100 p-0.5" role="group" aria-label="Role">
-        {(["student", "staff"] as Role[]).map((r) => (
+    <div className="relative ml-auto flex items-center gap-2 text-xs" ref={panel}>
+      {role === "staff" ? (
+        <>
+          <span className="rounded-full bg-accent-50 px-2.5 py-1 font-medium text-accent-800 ring-1 ring-inset ring-accent-200">
+            Staff
+          </span>
           <button
-            key={r}
-            onClick={() => setRole(r)}
-            aria-pressed={role === r}
-            className={cx(
-              "rounded-md px-3 py-1 font-medium capitalize transition-colors",
-              role === r ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-800",
-            )}
+            className="rounded-md px-2 py-1 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+            onClick={async () => {
+              await signOut();
+              toast("Signed out.", { tone: "info" });
+            }}
           >
-            {r}
+            Sign out
           </button>
-        ))}
-      </div>
+        </>
+      ) : (
+        <button
+          className={cx(
+            "rounded-md px-3 py-1.5 font-medium ring-1 ring-inset ring-stone-300 hover:bg-stone-50",
+            open ? "bg-stone-100 text-stone-900" : "text-stone-600",
+          )}
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        >
+          Staff sign-in
+        </button>
+      )}
+
+      {open && role !== "staff" && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-stone-200 bg-white p-4 shadow-lg">
+          <StaffLoginForm
+            autoFocus
+            onSuccess={() => {
+              setOpen(false);
+              toast("Signed in as staff.");
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

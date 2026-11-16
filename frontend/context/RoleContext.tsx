@@ -1,34 +1,60 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { STORAGE_KEYS } from "@/config/constants";
-import { getStoredRole, writeStorage, type Role } from "@/utils/storage";
+import { authService, UNAUTHORIZED_EVENT } from "@/services";
+import type { Role } from "@/utils/storage";
 
 interface RoleState {
+  /** Comes from the server's session check – never from anything the browser can set. */
   role: Role;
-  setRole: (role: Role) => void;
-  /** False until localStorage has been read, so pages don't flash the wrong view. */
+  /** False until the server has answered, so pages don't flash the wrong view. */
   ready: boolean;
+  staffLoginEnabled: boolean;
+  signIn: (passcode: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
-const RoleContext = createContext<RoleState>({ role: "student", setRole: () => {}, ready: false });
+const RoleContext = createContext<RoleState>({
+  role: "student",
+  ready: false,
+  staffLoginEnabled: true,
+  signIn: async () => {},
+  signOut: async () => {},
+});
 
-/** Student / Staff toggle, remembered on this device and sent to the API as `x-role`. */
+/** Students need no account. Staff sign in with a passcode and get an httpOnly session cookie. */
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [role, setRoleState] = useState<Role>("student");
+  const [role, setRole] = useState<Role>("student");
   const [ready, setReady] = useState(false);
+  const [staffLoginEnabled, setStaffLoginEnabled] = useState(true);
 
   useEffect(() => {
-    setRoleState(getStoredRole());
-    setReady(true);
+    authService
+      .me()
+      .then((me) => {
+        setRole(me.role);
+        setStaffLoginEnabled(me.staffLoginEnabled);
+      })
+      .catch(() => setRole("student"))
+      .finally(() => setReady(true));
+
+    // Session expired or missing on a staff request → fall back to the student view.
+    const onUnauthorized = () => setRole("student");
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
 
-  const setRole = useCallback((next: Role) => {
-    writeStorage(STORAGE_KEYS.role, next);
-    setRoleState(next);
+  const signIn = useCallback(async (passcode: string) => {
+    const res = await authService.login(passcode);
+    setRole(res.role);
   }, []);
 
-  return <RoleContext.Provider value={{ role, setRole, ready }}>{children}</RoleContext.Provider>;
+  const signOut = useCallback(async () => {
+    await authService.logout().catch(() => {});
+    setRole("student");
+  }, []);
+
+  return <RoleContext.Provider value={{ role, ready, staffLoginEnabled, signIn, signOut }}>{children}</RoleContext.Provider>;
 }
 
 export const useRole = () => useContext(RoleContext);

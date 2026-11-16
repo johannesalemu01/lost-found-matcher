@@ -6,7 +6,8 @@ import { useRole } from "@/context/RoleContext";
 import { useStaffMatches } from "@/hooks/useStaffMatches";
 import { matchesService, reportsService } from "@/services";
 import { cx } from "@/utils/cx";
-import { Button, EmptyState, ErrorState, Spinner } from "@/components/ui";
+import { EmptyState, ErrorState, Spinner } from "@/components/ui";
+import { StaffLoginForm } from "@/components/layout/StaffLoginForm";
 import { HandoverCard } from "./HandoverCard";
 import { LostGroup } from "./LostGroup";
 
@@ -18,19 +19,21 @@ const FILTERS: { value: MatchBand | ""; label: string }[] = [
 ];
 
 export function StaffReviewPage() {
-  const { role, ready, setRole } = useRole();
+  const { role, ready } = useRole();
   const [band, setBand] = useState<MatchBand | "">("");
   const { data, error, busyKey, reload, run } = useStaffMatches(band, ready && role === "staff");
 
   if (!ready) return <Spinner />;
   if (role !== "staff") {
     return (
-      <EmptyState title="Staff only" icon="🔒">
-        <p>This page shows private details for verification.</p>
-        <Button className="mt-4" onClick={() => setRole("staff")}>
-          Switch to Staff mode
-        </Button>
-      </EmptyState>
+      <div className="mx-auto max-w-sm">
+        <EmptyState title="Staff only" icon="🔒">
+          <p>This page shows private details, contacts and photos. Sign in with the staff passcode.</p>
+          <div className="mt-5 text-left">
+            <StaffLoginForm autoFocus />
+          </div>
+        </EmptyState>
+      </div>
     );
   }
 

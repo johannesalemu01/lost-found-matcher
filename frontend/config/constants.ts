@@ -1,6 +1,5 @@
 /** localStorage keys – per-device conveniences only, never relied on for correctness. */
 export const STORAGE_KEYS = {
-  role: "lf-role",
   contact: "lf-contact",
 } as const;
 
