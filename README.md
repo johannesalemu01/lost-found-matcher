@@ -133,7 +133,6 @@ The weights live in one file: [`backend/src/matching/constants.ts`](backend/src/
 
 ## AI usage
 
-TODO: written by me
 
 ---
 
