@@ -54,11 +54,6 @@ The principles:
 
 ## 3. How the matching system works
 
-![Matching workflow](docs/matching-flow.png)
-
-<details>
-<summary>Diagram source (Mermaid)</summary>
-
 ```mermaid
 flowchart TD
   submit[Student submits report to POST /api/reports] --> validate{Zod validation}
@@ -80,8 +75,6 @@ flowchart TD
   pending -->|owner passes verification| returned[Both reports RETURNED]
   pending -->|Undo| reopened[Both reports back to OPEN and matched again]
 ```
-
-</details>
 
 1. **Validate and save.** Bad input returns field errors so the form can show them. Vague descriptions still save, but get follow-up questions.
 2. **Pre-filter in SQL.** Only reports of the opposite type that are open, not expired, in the same category and in a sensible date window.
