@@ -5,7 +5,8 @@ import { apiRoutes } from "./routes";
 
 export function createApp({ corsOrigins }: { corsOrigins: string[] }) {
   const app = express();
-  app.use(cors({ origin: corsOrigins }));
+  // credentials: the staff session is an httpOnly cookie, so the web app must be allowed to send it.
+  app.use(cors({ origin: corsOrigins, credentials: true }));
   app.use(express.json({ limit: "50kb" }));
 
   app.use("/api", apiRoutes);

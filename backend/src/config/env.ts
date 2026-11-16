@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { resolve } from "node:path";
 import { z } from "zod";
 
@@ -31,6 +32,20 @@ export function uploadDir(): string {
 
 /** Photos are resized in the browser first; this is the hard server-side limit. */
 export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Staff login. STAFF_PASSCODE enables it; SESSION_SECRET signs session cookies.
+ * Without a SESSION_SECRET a random one is generated per process (sessions end on restart).
+ */
+const generatedSecret = randomBytes(32).toString("hex");
+
+export function staffAuthConfig(): { passcode: string | null; secret: string; secureCookies: boolean } {
+  return {
+    passcode: process.env.STAFF_PASSCODE?.trim() || null,
+    secret: process.env.SESSION_SECRET?.trim() || generatedSecret,
+    secureCookies: process.env.NODE_ENV === "production",
+  };
+}
 
 export interface AiConfig {
   apiKey: string;
