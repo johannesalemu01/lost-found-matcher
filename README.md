@@ -16,7 +16,7 @@ A small, complete web app for a university Lost & Found desk. Students report it
 ```bash
 npm run setup   # install, start Postgres (docker compose), migrate, seed demo data
 npm run dev     # API on http://localhost:4000, web on http://localhost:3000
-npm test        # 45 tests – no database, no network, no AI key needed
+npm test        # 52 tests – no database, no network, no AI key needed
 ```
 
 `npm run setup` creates `backend/.env` and `frontend/.env` from the `.env.example` files if they are missing. PostgreSQL is exposed on host port **5440** rather than 5432, so it doesn't clash with a Postgres already installed locally.
@@ -27,7 +27,7 @@ npm test        # 45 tests – no database, no network, no AI key needed
 |---|---|
 | Student | Home → *I lost something* → describe it → see matches and *why* they matched |
 | Student | *My reports* → `amina@example.edu` or `+251911000111` |
-| Staff | Toggle **Staff** in the header → *Staff review* → compare private details → *Confirm* → tick verification → *Mark returned* |
+| Staff | **Staff sign-in** in the header, passcode `staff-demo` (from `backend/.env`) → *Staff review* → compare private details and photos → *Confirm* → tick verification → *Mark returned* |
 
 To reset the demo data: `npm run db:reset`.
 
@@ -146,7 +146,8 @@ The backend does not score every pair. For each report it first runs an indexed 
 - Finders hand items in at the desk, so the "found" report is about a single moment (start = end).
 - Reporters can give at least an item type. Everything else may be "Not sure".
 - Expiry is 30 days, computed when read (no cron job). Staff can close any report manually.
-- No accounts. Students identify their own reports by the email or phone they entered. The header's Student/Staff toggle sends `x-role: staff`. **This is a demo stand-in for authentication, not a security boundary.**
+- Students have no accounts: reporting something should take a minute, not a sign-up. They follow their reports by the email or phone they entered.
+- Staff sign in with a shared passcode (`STAFF_PASSCODE`). In production this would be the university's SSO with individual staff accounts.
 - Dates are stored in UTC and shown in the viewer's local time.
 
 ## Key technical decisions
@@ -158,13 +159,14 @@ The backend does not score every pair. For each report it first runs an indexed 
 | **PostgreSQL over MongoDB** | The data is relational and benefits from constraints: lost/found decisions reference both reports, `UNIQUE(lostId, foundId)`, `CHECK (eventEnd >= eventStart)`, composite indexes for the pre-filter, and a confirm that must update two reports and a decision **in one transaction**. Arrays (`locations text[]`) cover the one document-like field. Postgres also opens the door to `pgvector` later. |
 | **Rules, not AI, as the judge** | Matching decides whose phone someone walks away with. It must be **deterministic, explainable and testable**: the same input always gives the same score, every point has a sentence, and the edge cases are pinned by unit tests. An LLM would be harder to audit and could be prompt-injected by a description. |
 | **Photos verify, they don't score** | A photo the owner took *before* the loss is strong ownership evidence, so staff see it next to the finder's photo. It is **not** fed into the score: comparing images would need AI to judge matches, generic items (every black AirPods case) look alike, and a stock photo proves nothing; only a human can judge a personal photo. Photos are staff-only (they often show faces, rooms or lock screens), checked by file signature rather than file name, limited to 5 MB, resized in the browser (which also strips EXIF/GPS), served with `no-store`, and never in public responses. |
+| **Staff login, anonymous students** | The private detail, contacts and photos are what stop false claims, so they must be protected **by the server**, not just hidden in the UI. Staff sign in with a passcode; the server sets an **HMAC-signed, httpOnly, SameSite=Lax session cookie** (8 h) that page scripts can't read and nobody can forge or extend. Every staff route checks it (401 otherwise); wrong passcodes are rate-limited (5 per 15 min per client) and compared in constant time. Students stay anonymous so reporting stays quick. A shared passcode is a deliberate stand-in for SSO, not the end state. |
 | **AI optional** | The app must run anywhere, offline, at zero cost. If `GEMINI_API_KEY` is set, the model in `GEMINI_EXTRACTION_MODEL` is used for (a) suggesting form fields from free text, or from the photo when the person clicks *Suggest fields from photo*, and (b) phrasing clarity questions. Output must be strict JSON validated by Zod, with a 5 s timeout. On any failure the app falls back to rules and logs a warning. The rules still decide *whether* a report is vague, and the person confirms every suggested field. Only the public title and description are sent, never private details or contact info. |
 | **Pure matching module** | `backend/src/matching` imports nothing from Express or Prisma. It is plain data in, plain data out, which makes it trivial to test and to explain. |
 | **Shared package** | Categories, campus layout, colour families and types live in `/shared` and are used by both the frontend and the backend, so the form chips and the engine can't drift apart. |
 
 ## Intentionally not built
 
-- **Real authentication / SSO.** Replaced by a role toggle so reviewers can see both sides.
+- **Individual staff accounts / SSO.** One shared staff passcode protects all staff data; per-person accounts and an audit trail need the university's identity provider.
 - **Image similarity in the score.** Photos are for staff verification only (see *Photos verify, they don't score*).
 - **Cloud storage for photos.** Photos are stored on local disk (`backend/uploads/`, gitignored); a private bucket with signed URLs would replace this in production.
 - **Notifications (email/SMS).** Students check *My reports*, and staff contact people manually.
@@ -178,7 +180,7 @@ The backend does not score every pair. For each report it first runs an indexed 
 - **Photo similarity as a staff hint** (image embeddings), shown next to the photos but still kept out of the score.
 - **Notifications** when a strong match appears or a match is confirmed.
 - **Feedback loop to tune weights:** confirmed and rejected decisions are already stored. Use them to calibrate weights and band thresholds and to grow the concept dictionary.
-- **Real auth/SSO** (university login) and role-based access. Rate-limit `/reports/mine`.
+- **University SSO** for staff (per-person accounts, audit log of who confirmed what) and **verified student email** (magic link) so *My reports* can't be looked up by someone who only knows your address.
 - **Campus map** for picking locations, with distances instead of a neighbour list.
 - **Amharic support:** UI translation plus Amharic entries in the concept and colour dictionaries.
 
@@ -203,7 +205,7 @@ backend/
 │   ├── app.ts                     Express app: CORS, JSON, /api, error handling
 │   ├── config/                    env.ts (validated env + AI config), database.ts (Prisma client)
 │   ├── routes/                    index.ts mounts reports / matches / assist / stats routers
-│   ├── middlewares/               require-staff.ts, error-handler.ts
+│   ├── middlewares/               require-staff.ts (session cookie check), upload.ts, error-handler.ts
 │   ├── controllers/               HTTP in/out only: validate input → call service → send JSON
 │   ├── validators/                Zod schemas for every request body/query (+ AI output schemas)
 │   ├── services/                  business logic + transactions; photo.service.ts (staff-only uploads); services/ai/ = Gemini client + prompts
@@ -225,12 +227,12 @@ frontend/
 ├── app/                           routes only – each page.tsx renders one page component
 ├── components/
 │   ├── ui/                        Button, Card, Chip, Badges, ScoreBar, ReasonList, States…
-│   ├── layout/                    Header, RoleToggle
+│   ├── layout/                    Header, RoleToggle (staff sign-in / sign-out), StaffLoginForm
 │   ├── home/ · reports/ · my-reports/ · staff/
 │   └── report-form/               ReportWizard, Stepper, steps/{Item,PlaceTime,Contact}Step, PhotoField, QualityHint, SuggestionPanel, SubmittedView
 ├── services/                      api-client.ts + one service per API resource
 ├── hooks/                         useClarityCheck, useStaffMatches, useAiStatus, useDebouncedValue
-├── context/                       RoleContext, ToastContext
+├── context/                       RoleContext (role comes from the server session), ToastContext
 ├── interfaces/                    API + form types
 ├── utils/                         format (local time), validation, time-presets, storage, cx
 └── config/                        env (API URL), constants
@@ -247,6 +249,8 @@ shared/src/                        categories, campus, colours, types – used b
 | GET | `/api/reports?type=&status=&q=&category=` | anyone | public fields only (staff also get contact and private detail) |
 | GET | `/api/reports/mine?contact=` | anyone | own reports, status, match count, friendly message |
 | GET | `/api/stats` | anyone | numbers for the home page |
+| POST | `/api/auth/staff/login` | anyone | `{passcode}` → sets the staff session cookie; 401 wrong, 429 too many attempts |
+| POST | `/api/auth/logout` · GET `/api/auth/me` | anyone | clear the cookie · current role |
 | GET | `/api/matches?band=` | staff | suggestions grouped by lost report and pairs awaiting handover |
 | POST | `/api/matches/confirm` · `reject` · `undo` | staff | `{lostId, foundId}`; confirm is one transaction |
 | POST | `/api/matches/returned` | staff | `{lostId, foundId, verified: true}`; refused without `verified` |
@@ -254,4 +258,4 @@ shared/src/                        categories, campus, colours, types – used b
 | POST | `/api/assist/extract` · `clarity` | anyone | AI if configured, otherwise rules |
 | POST | `/api/assist/extract-photo` | anyone | multipart `photo`; AI only (empty suggestions without a key); photo is not stored |
 
-Errors are always `{ "error": { "message": "...", "fields": { "title": "At least 3 characters" } } }` with status 400, 403, 404 or 409.
+Errors are always `{ "error": { "message": "...", "fields": { "title": "At least 3 characters" } } }` with status 400, 401, 404, 409 or 429. *staff* routes require the signed session cookie.
