@@ -2,7 +2,8 @@ import type { ClarityResponse, SuggestedFields } from "../interfaces";
 import { assessClarity, extractFields, type ClarityInput } from "../matching";
 import { aiClaritySchema, aiExtractionSchema } from "../validators/assist.validator";
 import { generateJson } from "./ai/gemini.client";
-import { clarityPrompt, extractionPrompt } from "./ai/prompts";
+import { clarityPrompt, extractionPrompt, photoExtractionPrompt } from "./ai/prompts";
+import { assertImage } from "./photo.service";
 
 /** a) Suggest form fields from free text. The person confirms every suggestion. */
 export async function suggestFields(text: string): Promise<SuggestedFields> {
@@ -11,6 +12,18 @@ export async function suggestFields(text: string): Promise<SuggestedFields> {
     if (ai) return { ...ai, colorFamily: ai.colorFamily === "UNKNOWN" ? null : ai.colorFamily, source: "ai" };
   }
   return { ...extractFields(text), source: "rules" };
+}
+
+/**
+ * a2) Suggest form fields from a photo. Needs the AI – there is no rule-based way to read an image,
+ * so without a key (or on any failure) it returns empty suggestions with source "rules".
+ * The photo is only sent when the person clicks the button, and it is not stored by this call.
+ */
+export async function suggestFieldsFromPhoto(photo: Buffer): Promise<SuggestedFields> {
+  const mimeType = assertImage(photo);
+  const ai = await generateJson(photoExtractionPrompt(), aiExtractionSchema, "extract-photo", { mimeType, data: photo });
+  if (ai) return { ...ai, colorFamily: ai.colorFamily === "UNKNOWN" ? null : ai.colorFamily, source: "ai" };
+  return { subcategory: null, colorFamily: null, brand: null, features: [], source: "rules" };
 }
 
 /**

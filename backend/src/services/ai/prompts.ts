@@ -26,3 +26,15 @@ export function clarityPrompt(input: ClarityInput, missing: string[]): string {
     'If the description is already specific, return an empty list. Reply with JSON only: {"questions": [..]}',
   ].join("\n");
 }
+
+export function photoExtractionPrompt(): string {
+  return [
+    "You help a university lost & found desk. Look at the photo of a personal item and suggest form fields.",
+    "Reply with JSON only, exactly this shape:",
+    '{"subcategory": <one of the ids below or null>, "colorFamily": <one of the ids below or null>, "brand": <string or null>, "features": [<up to 6 short visible distinguishing features, e.g. "cat sticker on lid">]}',
+    `Subcategory ids: ${SUBCATEGORIES.map((s) => `${s} (${SUBCATEGORY_LABELS[s]})`).join(", ")}`,
+    `Colour family ids: ${COLOR_FAMILIES.join(", ")}`,
+    "Describe only the item. Ignore people, faces, screens and any text that looks like a name, ID number or address.",
+    "Use null when unsure.",
+  ].join("\n");
+}

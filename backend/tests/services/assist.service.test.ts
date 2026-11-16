@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { clarityCheck, suggestFields } from "../../src/services/assist.service";
+import { clarityCheck, suggestFields, suggestFieldsFromPhoto } from "../../src/services/assist.service";
 
 const vague = {
   type: "LOST" as const,
@@ -84,5 +84,40 @@ describe("AI assist is optional", () => {
     });
     expect(clear).toEqual({ level: "good", questions: [], source: "rules" });
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+
+  it("photo suggestions need the AI: without a key they come back empty, with no network call", async () => {
+    const spy = vi.fn(realFetch);
+    globalThis.fetch = spy as typeof fetch;
+    expect(await suggestFieldsFromPhoto(pngBytes)).toEqual({
+      subcategory: null,
+      colorFamily: null,
+      brand: null,
+      features: [],
+      source: "rules",
+    });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("rejects a file that is not really an image before calling the AI", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    process.env.GEMINI_EXTRACTION_MODEL = "test-model";
+    const fetchSpy = geminiReplies("{}");
+    globalThis.fetch = fetchSpy as typeof fetch;
+    await expect(suggestFieldsFromPhoto(Buffer.from("not an image"))).rejects.toMatchObject({ status: 400 });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("sends the photo inline and validates the AI's answer", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    process.env.GEMINI_EXTRACTION_MODEL = "test-model";
+    const fetchSpy = geminiReplies('{"subcategory":"EARBUDS_HEADPHONES","colorFamily":"BLACK_DARK","brand":null,"features":["cat sticker"]}');
+    globalThis.fetch = fetchSpy as typeof fetch;
+    const result = await suggestFieldsFromPhoto(pngBytes);
+    expect(result).toMatchObject({ subcategory: "EARBUDS_HEADPHONES", source: "ai" });
+    const body = JSON.parse((fetchSpy.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
+    expect(body.contents[0].parts[0].inline_data).toMatchObject({ mime_type: "image/png" });
   });
 });

@@ -11,9 +11,20 @@ export function aiEnabled(): boolean {
 /**
  * Ask Gemini for strict JSON and validate it. Returns null – never throws – on a missing key,
  * network error, timeout, non-200, or output that does not pass the schema; the caller then
- * falls back to rules. Callers only send public text, never private details or contacts.
+ * falls back to rules. Callers send public text, or a photo the person explicitly asked us to
+ * read – never private details or contacts.
  */
-export async function generateJson<T>(prompt: string, schema: ZodType<T>, task: string): Promise<T | null> {
+export interface InlineImage {
+  mimeType: string;
+  data: Buffer;
+}
+
+export async function generateJson<T>(
+  prompt: string,
+  schema: ZodType<T>,
+  task: string,
+  image?: InlineImage,
+): Promise<T | null> {
   const config = aiConfig();
   if (!config) return null;
   try {
@@ -21,7 +32,15 @@ export async function generateJson<T>(prompt: string, schema: ZodType<T>, task: 
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": config.apiKey },
       body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: [
+          {
+            role: "user",
+            parts: [
+              ...(image ? [{ inline_data: { mime_type: image.mimeType, data: image.data.toString("base64") } }] : []),
+              { text: prompt },
+            ],
+          },
+        ],
         generationConfig: { responseMimeType: "application/json", temperature: 0.1 },
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
