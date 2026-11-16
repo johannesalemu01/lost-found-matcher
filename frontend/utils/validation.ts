@@ -50,6 +50,7 @@ export const FIELD_STEP: Record<string, number> = {
   eventStart: 1,
   eventEnd: 1,
   privateDetail: 1,
+  photo: 0,
   contactName: 2,
   contactEmailOrPhone: 2,
 };

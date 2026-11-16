@@ -12,6 +12,8 @@ export interface ReportFormState {
   start: string;
   end: string;
   privateDetail: string;
+  /** Optional staff-only photo, already resized in the browser. */
+  photo: Blob | null;
   contactName: string;
   contactEmailOrPhone: string;
 }

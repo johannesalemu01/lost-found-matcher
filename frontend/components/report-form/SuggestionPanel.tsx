@@ -16,7 +16,7 @@ export function SuggestionPanel({
   return (
     <div className="mt-2 rounded-lg border border-accent-200 bg-accent-50 p-3 text-sm">
       <p className="font-medium text-accent-800">
-        Suggested from your text {suggestion.source === "ai" ? "(AI)" : "(keyword rules)"} – check before using:
+        Suggested {suggestion.source === "ai" ? "by AI" : "by keyword rules"} – check before using:
       </p>
       <ul className="mt-1 text-accent-800">
         {suggestion.subcategory && <li>Item: {SUBCATEGORY_LABELS[suggestion.subcategory]}</li>}

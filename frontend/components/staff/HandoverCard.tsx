@@ -5,6 +5,7 @@ import type { AwaitingHandover } from "@/interfaces";
 import { formatDateTime } from "@/utils/format";
 import { Button, Card } from "@/components/ui";
 import { ContactLine } from "./ContactLine";
+import { PhotoComparison } from "./PhotoComparison";
 import { PrivateDetails } from "./PrivateDetails";
 
 /** A confirmed pair: "Mark returned" stays disabled until the verification box is ticked. */
@@ -31,6 +32,7 @@ export function HandoverCard({
       <div className="mt-3 grid gap-4 md:grid-cols-2">
         <div className="space-y-3">
           <PrivateDetails lost={match.lost} found={match.found} />
+          <PhotoComparison lost={match.lost} found={match.found} />
           <ContactLine report={match.lost} />
         </div>
         <div className="space-y-3">

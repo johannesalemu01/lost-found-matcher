@@ -3,6 +3,7 @@ import type { StaffMatch } from "@/interfaces";
 import { BandBadge, Button, Card, ReasonList, ScoreBar } from "@/components/ui";
 import { ReportSummary } from "@/components/reports/ReportSummary";
 import { ContactLine } from "./ContactLine";
+import { PhotoComparison } from "./PhotoComparison";
 import { PrivateDetails } from "./PrivateDetails";
 
 /** One suggestion: lost vs found side by side, reasons, private details, verification question. */
@@ -54,6 +55,7 @@ export function MatchCard({
         </div>
         <div className="space-y-3">
           <PrivateDetails lost={lost} found={match.found} />
+          <PhotoComparison lost={lost} found={match.found} />
           <p className="rounded-lg bg-stone-50 p-3 text-sm text-stone-700">
             <span className="font-medium">💬 {match.verificationQuestion}</span>
           </p>

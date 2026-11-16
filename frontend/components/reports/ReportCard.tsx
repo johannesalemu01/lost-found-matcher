@@ -2,6 +2,7 @@ import type { PublicReport } from "@lf/shared";
 import type { StaffReport } from "@/interfaces";
 import { timeAgo } from "@/utils/format";
 import { Button, Card } from "@/components/ui";
+import { StaffPhoto } from "@/components/staff/StaffPhoto";
 import { ReportSummary } from "./ReportSummary";
 
 /** A report in the browse list. Staff additionally see contact + private detail and can close it. */
@@ -17,6 +18,9 @@ export function ReportCard({ report, onClose }: { report: PublicReport | StaffRe
           <p>
             <span className="font-medium text-stone-800">Contact:</span> {staff.contactName} · {staff.contactEmailOrPhone}
           </p>
+          {staff.hasPhoto && (
+            <StaffPhoto reportId={staff.id} alt={`Photo of ${staff.title}`} className="mt-1 h-24 w-32 rounded-md ring-1 ring-stone-200" />
+          )}
           {staff.privateDetail && (
             <p>
               <span className="font-medium text-stone-800">🔒 Private detail:</span> {staff.privateDetail}

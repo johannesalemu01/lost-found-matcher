@@ -31,6 +31,7 @@ function initialState(isLost: boolean): ReportFormState {
     start: toLocalInput(isLost ? new Date(now.getTime() - 3 * 3600_000) : now),
     end: toLocalInput(now),
     privateDetail: "",
+    photo: null,
     contactName: "",
     contactEmailOrPhone: "",
   };
@@ -84,7 +85,7 @@ export function ReportWizard({ type }: { type: ReportType }) {
         privateDetail: form.privateDetail,
         contactName: form.contactName,
         contactEmailOrPhone: form.contactEmailOrPhone,
-      });
+      }, form.photo);
       writeStorage(STORAGE_KEYS.contact, form.contactEmailOrPhone.trim());
       setResult(res);
     } catch (err) {

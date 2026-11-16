@@ -6,6 +6,7 @@ import { useToast } from "@/context/ToastContext";
 import type { ClarityResponse, ExtractResponse, StepProps } from "@/interfaces";
 import { assistService } from "@/services";
 import { Button, Chip, FieldError } from "@/components/ui";
+import { PhotoField } from "../PhotoField";
 import { QualityHint } from "../QualityHint";
 import { SuggestionPanel } from "../SuggestionPanel";
 
@@ -13,6 +14,8 @@ import { SuggestionPanel } from "../SuggestionPanel";
 export function ItemStep({ form, errors, isLost, set, update, clarity }: StepProps & { clarity: ClarityResponse | null }) {
   const toast = useToast();
   const [suggestion, setSuggestion] = useState<ExtractResponse | null>(null);
+  /** Show the suggestion next to what produced it: the description or the photo. */
+  const [suggestionFrom, setSuggestionFrom] = useState<"text" | "photo">("text");
   const [suggesting, setSuggesting] = useState(false);
   const cat = form.category ? CATEGORY_INFO[form.category] : null;
 
@@ -28,6 +31,7 @@ export function ItemStep({ form, errors, isLost, set, update, clarity }: StepPro
       if (!s.subcategory && !s.colorFamily && !s.brand) {
         toast("No suggestions – try adding what it is and its colour.", { tone: "info" });
       }
+      setSuggestionFrom("text");
       setSuggestion(s);
     } catch (e) {
       toast(e instanceof Error ? e.message : "Couldn’t get suggestions", { tone: "error" });
@@ -112,7 +116,9 @@ export function ItemStep({ form, errors, isLost, set, update, clarity }: StepPro
           onChange={(e) => set("description", e.target.value)}
         />
         <div className="mt-1 text-right text-xs text-stone-400">{form.description.length}/1000</div>
-        {suggestion && <SuggestionPanel suggestion={suggestion} onApply={applySuggestion} onDismiss={() => setSuggestion(null)} />}
+        {suggestion && suggestionFrom === "text" && (
+          <SuggestionPanel suggestion={suggestion} onApply={applySuggestion} onDismiss={() => setSuggestion(null)} />
+        )}
         <QualityHint clarity={clarity} />
       </div>
 
@@ -145,6 +151,22 @@ export function ItemStep({ form, errors, isLost, set, update, clarity }: StepPro
           placeholder="e.g. Apple, JanSport"
         />
       </div>
+
+      <PhotoField
+        isLost={isLost}
+        photo={form.photo}
+        error={errors.photo}
+        onChange={(p) => set("photo", p)}
+        onSuggestion={(s) => {
+          setSuggestionFrom("photo");
+          setSuggestion(s);
+        }}
+      />
+      {suggestion && suggestionFrom === "photo" && (
+        <div className="-mt-4">
+          <SuggestionPanel suggestion={suggestion} onApply={applySuggestion} onDismiss={() => setSuggestion(null)} />
+        </div>
+      )}
     </div>
   );
 }
